@@ -121,8 +121,8 @@ with st.sidebar:
     reliable_tracking = False
     st.caption("Fast mode processes every 4th frame and tracks those frames. This keeps total people estimates responsive; enable full-frame tracking in code only for validation runs.")
     save_annotated = st.checkbox(
-        "Save annotated videos", value=False,
-        help="Creates an output video with boxes, labels, confidence scores, and tracking IDs. This is slower because it processes every frame; leave off for faster counts.",
+        "Save annotated videos (required to open video)", value=True,
+        help="Creates an output video with boxes, labels, confidence scores, and tracking IDs. This is slower because it processes every frame.",
     )
     st.caption("After adding files, click Analyze videos to process them.")
     if st.button("Step 2 · Analyze videos"):
@@ -238,7 +238,7 @@ with st.container(border=True):
                 st.session_state["selected_day"] = day
                 st.rerun()
         else:
-            row[-1].caption("Not available")
+            row[-1].caption("Run analysis with Save annotated videos enabled")
 
         if open_annotation_day == day and annotated_path.exists():
             st.caption(f"Annotated video · {record['video']}")

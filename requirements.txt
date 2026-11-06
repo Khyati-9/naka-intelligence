@@ -1,5 +1,7 @@
 ultralytics>=8.4.0
-opencv-python>=4.9.0,<5
+# Streamlit Cloud has no GUI/display server; the headless wheel avoids Qt/X11
+# import failures while still providing cv2.dnn and video processing.
+opencv-python-headless>=4.9.0,<5
 pandas>=2.0.0
 streamlit>=1.35.0
 plotly>=5.20.0

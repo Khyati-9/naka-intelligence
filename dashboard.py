@@ -20,31 +20,14 @@ from demographic_sampling import COLUMNS, empty_samples, summarize_samples, vali
 ROOT = Path(__file__).parent
 INPUT = ROOT / "input_videos"
 OUTPUT = ROOT / "outputs"
-JOB_PATH = OUTPUT / ".analysis_job.json"
 LOG_PATH = OUTPUT / "analysis.log"
 
-
-def active_analysis_pid() -> int | None:
-    if not JOB_PATH.exists():
-        return None
-    try:
-        pid = int(json.loads(JOB_PATH.read_text(encoding="utf-8"))["pid"])
-        os.kill(pid, 0)
-        return pid
-    except (OSError, ValueError, KeyError, json.JSONDecodeError):
-        JOB_PATH.unlink(missing_ok=True)
-        return None
-
-
-def start_analysis(command: list[str]) -> None:
+def run_analysis(command: list[str]) -> tuple[int, str]:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    with LOG_PATH.open("w", encoding="utf-8") as log:
-        process = subprocess.Popen(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
-                                   start_new_session=True)
-    JOB_PATH.write_text(json.dumps({"pid": process.pid, "started_at": time.time()}), encoding="utf-8")
-
-
-analysis_pid = active_analysis_pid()
+    completed = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=1800)
+    output = (completed.stdout or "") + ("\n" + completed.stderr if completed.stderr else "")
+    LOG_PATH.write_text(output, encoding="utf-8")
+    return completed.returncode, output
 
 st.set_page_config(page_title="Naka Intelligence", layout="wide")
 st.markdown(
@@ -143,7 +126,7 @@ with st.sidebar:
         help="Creates an output video with boxes, labels, confidence scores, and tracking IDs. This is slower because it processes every frame; leave off for faster counts.",
     )
     st.caption("After adding files, click Analyze videos to process them.")
-    if st.button("Step 2 · Analyze videos", disabled=analysis_pid is not None):
+    if st.button("Step 2 · Analyze videos"):
         command = [sys.executable, str(ROOT / "pipeline.py"), "--input", str(INPUT),
                    "--output", str(OUTPUT), "--model", model,
                    "--sample-seconds", str(sample_seconds), "--confidence", str(confidence),
@@ -153,18 +136,19 @@ with st.sidebar:
             command.append("--reliable-tracking")
         if save_annotated:
             command.append("--save-annotated")
-        start_analysis(command)
-        st.success("Analysis started in the background. Results will load automatically.")
-        st.rerun()
-
-if analysis_pid:
-    st.info("Calculating… the full people count is running in the background. Male/female totals will appear after the analysis finishes.")
-    try:
-        from streamlit_autorefresh import st_autorefresh
-        st_autorefresh(interval=2000, key="analysis_refresh")
-    except ImportError:
-        st.caption("Refresh this page to check progress.")
-    st.stop()
+        with st.status("Calculating people and male/female estimates…", expanded=True) as status:
+            try:
+                return_code, analysis_output = run_analysis(command)
+                if return_code == 0:
+                    status.update(label="Analysis complete", state="complete")
+                    st.success("Analysis complete. Results are shown below.")
+                    st.rerun()
+                status.update(label="Analysis failed", state="error")
+                st.error("The analysis process failed. See the details below.")
+                st.code(analysis_output[-6000:] or "No diagnostic output was produced.")
+            except subprocess.TimeoutExpired:
+                status.update(label="Analysis timed out", state="error")
+                st.error("Analysis exceeded the 30-minute limit. Reduce video length or increase the sample interval.")
 
 summary_path = OUTPUT / "daily_summary.csv"
 observations_path = OUTPUT / "observations.csv"

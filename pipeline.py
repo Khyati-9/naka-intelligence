@@ -175,6 +175,12 @@ def analyze_video(video_path: Path, output_dir: Path, model: YOLO, sample_second
     if writer is not None:
         writer.release()
         ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            try:
+                from imageio_ffmpeg import get_ffmpeg_exe
+                ffmpeg = get_ffmpeg_exe()
+            except Exception:
+                ffmpeg = None
         if ffmpeg and annotated_raw_path.exists():
             try:
                 subprocess.run(
@@ -184,7 +190,9 @@ def analyze_video(video_path: Path, output_dir: Path, model: YOLO, sample_second
                 )
                 annotated_raw_path.unlink(missing_ok=True)
             except subprocess.CalledProcessError:
-                annotated_raw_path.replace(annotated_path)
+                # Never expose the mp4v intermediate as a browser video.
+                annotated_raw_path.unlink(missing_ok=True)
+                raise RuntimeError("Could not convert the annotated video to browser-compatible H.264 MP4.")
         elif annotated_raw_path.exists():
             annotated_raw_path.replace(annotated_path)
 

@@ -107,7 +107,10 @@ def analyze_video(video_path: Path, output_dir: Path, model: YOLO, sample_second
     for frame_index, result in result_stream:
         if save_annotated and writer is None:
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            writer = cv2.VideoWriter(str(annotated_raw_path), fourcc, fps, (width, height))
+            # Frames are sampled by vid_stride. Match the output FPS so the
+            # annotated video does not play faster than 2x real time.
+            output_fps = max(1.0, fps / max(1, min(frame_stride, 2)))
+            writer = cv2.VideoWriter(str(annotated_raw_path), fourcc, output_fps, (width, height))
         if save_annotated and writer is not None:
             writer.write(result.plot())
 

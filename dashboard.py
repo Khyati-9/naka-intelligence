@@ -119,7 +119,7 @@ with st.sidebar:
     confidence = st.slider("Detection confidence", 0.10, 0.60, 0.20, 0.05,
                            help="Lower values find more people but can add false detections.")
     reliable_tracking = False
-    st.caption("Fast mode processes every 4th frame and tracks those frames. This keeps total people estimates responsive; enable full-frame tracking in code only for validation runs.")
+    st.caption("Fast mode processes every 2nd frame and tracks those frames. This improves tracking of partially hidden people while keeping processing practical.")
     save_annotated = st.checkbox(
         "Save annotated videos (required to open video)", value=True,
         help="Creates an output video with boxes, labels, confidence scores, and tracking IDs. This is slower because it processes every frame.",
@@ -129,8 +129,8 @@ with st.sidebar:
         command = [sys.executable, str(ROOT / "pipeline.py"), "--input", str(INPUT),
                    "--output", str(OUTPUT), "--model", model,
                    "--sample-seconds", str(sample_seconds), "--confidence", str(confidence),
-                   "--frame-stride", "4"]
-        command.extend(["--imgsz", "512"])
+                   "--frame-stride", "2"]
+        command.extend(["--imgsz", "640"])
         if reliable_tracking:
             command.append("--reliable-tracking")
         if save_annotated:

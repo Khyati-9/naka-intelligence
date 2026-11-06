@@ -71,7 +71,8 @@ def as_names(names: Any) -> dict[int, str]:
 def analyze_video(video_path: Path, output_dir: Path, model: YOLO, sample_seconds: float,
                   tracker: str, confidence: float, save_annotated: bool,
                   reliable_tracking: bool = False, image_size: int = 512,
-                  frame_stride: int = 4, gender_classifier: GenderClassifier | None = None) -> tuple[list[dict], dict]:
+                  frame_stride: int = 4, gender_classifier: GenderClassifier | None = None,
+                  augment: bool = True) -> tuple[list[dict], dict]:
     cap = cv2.VideoCapture(str(video_path))
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
@@ -101,7 +102,8 @@ def analyze_video(video_path: Path, output_dir: Path, model: YOLO, sample_second
     # Track continuously; sampling controls exported observations only.
     result_stream = enumerate(model.track(
         source=str(video_path), stream=True, persist=True, tracker=tracker,
-        conf=confidence, imgsz=image_size, max_det=1000, vid_stride=frame_stride, verbose=False,
+        conf=confidence, imgsz=image_size, max_det=1000, vid_stride=frame_stride,
+        augment=augment, verbose=False,
     ))
 
     for frame_index, result in result_stream:
@@ -245,9 +247,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze naka videos locally with YOLO tracking.")
     parser.add_argument("--input", type=Path, default=Path("input_videos"))
     parser.add_argument("--output", type=Path, default=Path("outputs"))
-    parser.add_argument("--model", default="yolo26n.pt")
-    parser.add_argument("--imgsz", type=int, default=512)
-    parser.add_argument("--frame-stride", type=int, default=4)
+    parser.add_argument("--model", default="yolo26s.pt")
+    parser.add_argument("--imgsz", type=int, default=960)
+    parser.add_argument("--frame-stride", type=int, default=2)
     parser.add_argument("--sample-seconds", type=float, default=2.0)
     parser.add_argument("--tracker", default="botsort.yaml")
     parser.add_argument("--confidence", type=float, default=0.15)
@@ -258,6 +260,7 @@ def main() -> None:
     parser.add_argument("--face-model", type=Path, default=Path("models/face_detection_yunet_2023mar.onnx"))
     parser.add_argument("--gender-confidence", type=float, default=0.60)
     parser.add_argument("--disable-gender", action="store_true")
+    parser.add_argument("--no-augment", action="store_true", help="Disable test-time augmentation for faster processing.")
     args = parser.parse_args()
 
     args.output.mkdir(parents=True, exist_ok=True)
@@ -280,7 +283,7 @@ def main() -> None:
         rows, summary = analyze_video(video, args.output, model, args.sample_seconds,
                                       args.tracker, args.confidence, args.save_annotated,
                                       args.reliable_tracking, args.imgsz, args.frame_stride,
-                                      gender_classifier)
+                                      gender_classifier, augment=not args.no_augment)
         all_rows.extend(rows)
         summaries.append(summary)
 

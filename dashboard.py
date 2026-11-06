@@ -72,9 +72,9 @@ if page == "Face comparison":
                         st.caption(f"Face {face_index + 1} · {preview['timestamp']:.1f}s")
                         if preview["image"]:
                             st.image(preview["image"], width=120)
-            st.dataframe(pd.DataFrame(face_result["candidates"]), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(face_result["candidates"]), width="stretch", hide_index=True)
             with st.expander("All group-to-group similarity scores"):
-                st.dataframe(pd.DataFrame(face_result["scores"], index=[f"Video 1 · Face {i + 1}" for i in range(face_result["first_groups"])], columns=[f"Video 2 · Face {i + 1}" for i in range(face_result["second_groups"])]), use_container_width=True)
+                st.dataframe(pd.DataFrame(face_result["scores"], index=[f"Video 1 · Face {i + 1}" for i in range(face_result["first_groups"])], columns=[f"Video 2 · Face {i + 1}" for i in range(face_result["second_groups"])]), width="stretch")
         except (ValueError, OSError, cv2.error) as error:
             st.error(str(error))
     st.stop()
@@ -324,7 +324,7 @@ if object_counts:
         columns=["detected_class", "sampled_detections"],
     )
     st.write("Vehicles, shops, and stalls detected in sampled frames")
-    st.dataframe(object_table, use_container_width=True, hide_index=True)
+    st.dataframe(object_table, width="stretch", hide_index=True)
 else:
     st.info("No vehicle, shop, or stall detections are available for this video yet. Run Scan shops and stalls for infrastructure candidates.")
 
@@ -334,7 +334,7 @@ detail_fig = px.line(
     y=["people_count", "vehicle_count"],
     labels={"timestamp_seconds": "Seconds from video start", "value": "Count", "variable": "Metric"},
 )
-st.plotly_chart(detail_fig, use_container_width=True)
+st.plotly_chart(detail_fig, width="stretch")
 
 st.subheader("Demographic data")
 st.info(
@@ -347,12 +347,12 @@ st.subheader("People and vehicle trends")
 trend = observations.sort_values(["day", "timestamp_seconds"])
 fig = px.line(trend, x="timestamp_seconds", y="people_count", color="day",
               labels={"timestamp_seconds": "Seconds from video start", "people_count": "Visible people"})
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 st.subheader("Vehicle trends")
 vehicle_fig = px.line(trend, x="timestamp_seconds", y="vehicle_count", color="day",
                      labels={"timestamp_seconds": "Seconds from video start", "vehicle_count": "Visible vehicles"})
-st.plotly_chart(vehicle_fig, use_container_width=True)
+st.plotly_chart(vehicle_fig, width="stretch")
 
 st.warning("Anonymous track totals are per-video estimates and must not be interpreted as recurring identities across days.")
 

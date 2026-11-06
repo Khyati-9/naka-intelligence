@@ -14,7 +14,6 @@ import cv2
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from demographic_sampling import COLUMNS, empty_samples, summarize_samples, validate_samples
 
 
 ROOT = Path(__file__).parent
@@ -158,11 +157,6 @@ if not summary_path.exists() or not observations_path.exists():
 
 summary = pd.read_csv(summary_path)
 observations = pd.read_csv(observations_path)
-demographic_path = OUTPUT / "demographic_samples.csv"
-demographic_samples = empty_samples()
-if demographic_path.exists():
-    demographic_samples = pd.read_csv(demographic_path)
-
 def analysis_is_complete(record: pd.Series) -> bool:
     """Detect old/partial output so the UI does not present it as final."""
     video_observations = observations[observations["day"] == record["day"]]
@@ -187,44 +181,6 @@ cols[6].metric("Female estimate", female_total if all_analysis_complete else "Ca
 st.caption("Average people is calculated across all sampled observations from all videos. Total people detections is the sum across sampled observations, not the number of unique people. Metrics show Calculating… while any video is incomplete.")
 st.caption("Male/female values are model estimates from visible faces, counted once per temporary track where a face is detected. Low-confidence or missing-face cases are Unknown.")
 
-st.subheader("Compare all videos")
-with st.expander("Aggregate demographic sampling", expanded=False):
-    with st.form("aggregate_entry"):
-        survey_video = st.selectbox("Video for this sample", summary["video"].tolist())
-        survey_time = st.number_input("Sample timestamp (seconds)", min_value=0.0)
-        st.caption("Record anonymous survey totals for this sample. Leave unreported categories as Unknown. No individual registration is required.")
-        entry = {"video": survey_video, "timestamp_seconds": survey_time}
-        for field in COLUMNS[2:-2]:
-            entry[field] = st.number_input(field.replace("_", " ").title(), min_value=0, step=1, key="aggregate_" + field)
-        entry["confidence"] = st.slider("Observer confidence (self-rated)", 0.0, 1.0, 0.5)
-        entry["coverage"] = st.slider("Fraction of the crowd covered by this sample", 0.0, 1.0, 0.0)
-        if st.form_submit_button("Save anonymous sample"):
-            try:
-                incoming = validate_samples(pd.DataFrame([entry]), set(summary["video"]))
-                duration = float(summary.loc[summary.video == survey_video, "duration_seconds"].iloc[0])
-                if survey_time >= duration:
-                    raise ValueError("Sample timestamp must fall within the video.")
-                demographic_samples = pd.concat([demographic_samples, incoming], ignore_index=True).drop_duplicates(["video", "timestamp_seconds"], keep="last")
-                demographic_samples.to_csv(demographic_path, index=False)
-                st.success("Anonymous sample saved.")
-            except ValueError as error:
-                st.error(str(error))
-    st.caption("Enter observed aggregate counts for a video and time interval. Do not enter names, track IDs, face data, or individual demographic records.")
-    template = pd.DataFrame(columns=COLUMNS)
-    st.download_button("Download aggregate CSV template", template.to_csv(index=False), "demographic_samples_template.csv", "text/csv")
-    demographic_upload = st.file_uploader("Upload aggregate demographic CSV", type=["csv"], key="demographic_csv")
-    if st.button("Save aggregate samples", disabled=demographic_upload is None):
-        try:
-            incoming = pd.read_csv(demographic_upload)
-            incoming = validate_samples(incoming, set(summary["video"]))
-            incoming.to_csv(demographic_path, index=False)
-            demographic_samples = incoming
-            st.success("Aggregate demographic samples saved.")
-        except (ValueError, pd.errors.ParserError) as error:
-            st.error(str(error))
-demographic_summary = summarize_samples(demographic_samples, set(summary["video"]))
-st.download_button("Export interval samples CSV", demographic_samples.to_csv(index=False), "demographic_intervals.csv", "text/csv")
-st.caption("Demographic totals sum sample observations; people present in multiple samples can appear more than once. Confidence is observer-rated, not measured model accuracy.")
 available_days = summary["day"].tolist()
 requested_video = st.query_params.get("video")
 session_video = st.session_state.get("selected_day")
@@ -237,10 +193,7 @@ selected_day = selected_video
 selected_summary = summary[summary["day"] == selected_day].iloc[0]
 st.session_state["selected_day"] = selected_day
 
-st.caption("The table remains visible. Click View annotated video to open the player directly below that row.")
-st.caption("Demographic columns are aggregate observations by video and time interval. Unknown, confidence, and coverage are retained for incomplete or uncertain samples.")
-st.download_button("Export aggregate demographic CSV", demographic_summary.to_csv(index=False),
-                   "aggregate_demographic_summary.csv", "text/csv")
+st.caption("Click View annotated video to open the player directly below that row.")
 open_annotation_day = st.session_state.get("open_annotation_day")
 infrastructure_counts: dict[str, dict[str, int]] = {}
 infrastructure_path = OUTPUT / "infrastructure_detections.csv"

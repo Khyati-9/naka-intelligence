@@ -1,0 +1,11 @@
+input_videos/*
+outputs/*
+__pycache__/
+.venv/
+.venv312/
+*.pyc
+*.log
+
+# Keep deployment source small and avoid committing alternate heavyweight models.
+yolo26s.pt
+yolov8s-world.pt

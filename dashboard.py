@@ -115,7 +115,7 @@ with st.sidebar:
         help="The pipeline processes one frame every N seconds. Lower values give a smoother trend but take longer. At 2 seconds, a 30-minute video uses about 900 sampled frames.",
     )
     st.caption(f"Current setting: one frame every {sample_seconds} seconds")
-    model = st.text_input("YOLO model", "yolo26s.pt", help="Small is more accurate for crowded scenes; use nano only when processing speed is critical.")
+    model = st.text_input("YOLO model", "yolo26n.pt", help="Nano is the fast default. Use yolo26s.pt for better crowded-scene recall at the cost of speed.")
     confidence = st.slider("Detection confidence", 0.10, 0.60, 0.15, 0.05,
                            help="Lower values find more people but can add false detections.")
     reliable_tracking = False
@@ -130,7 +130,7 @@ with st.sidebar:
                    "--output", str(OUTPUT), "--model", model,
                    "--sample-seconds", str(sample_seconds), "--confidence", str(confidence),
                    "--frame-stride", "2"]
-        command.extend(["--imgsz", "960"])
+        command.extend(["--imgsz", "640", "--no-augment"])
         if reliable_tracking:
             command.append("--reliable-tracking")
         if save_annotated:
